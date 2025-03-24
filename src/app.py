@@ -134,6 +134,20 @@ st.sidebar.markdown("---")
 dataset_choice = st.sidebar.selectbox("Choisissez un dataset", ["MUTAG", "PTC", "AIDS"])
 st.sidebar.markdown("---")
 
+st.title("🧠 PANG Visualizer – Explorez vos graphes comme jamais auparavant")
+
+st.markdown(
+    """
+Bienvenue dans **PANG Visualizer**, une application interactive pour analyser des graphes à partir de motifs fréquents discriminants.
+
+Vous pouvez :
+- 📊 **Explorer les statistiques générales** d’un dataset (taille des graphes, classes, motifs structurants, etc.)
+- 🔍 **Analyser la prédiction d’un graphe individuel**, visualiser les motifs discriminants utilisés par le modèle, et comprendre sa décision à l’aide d’un **arbre explicatif**.
+
+Plongez dans la structure de vos données, explorez leurs motifs cachés, et laissez parler les graphes !
+"""
+)
+
 # Dataset description
 dataset_descriptions = {
     "MUTAG": "MUTAG est un dataset de graphes représentant des composés chimiques. Chaque graphe est étiqueté selon la mutagénicité du composé.",
