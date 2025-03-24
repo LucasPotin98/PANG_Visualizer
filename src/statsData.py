@@ -3,7 +3,7 @@ import pandas as pd
 import networkx as nx
 
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "PANG_Database.db")
+DB_PATH = "PANG_Database.db"
 
 def gspan_to_networkx(gspan_str):
     """
