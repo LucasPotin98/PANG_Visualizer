@@ -2,8 +2,7 @@ import sqlite3
 import pandas as pd
 import networkx as nx
 
-
-DB_PATH = "PANG_Database.db"
+DB_PATH = "../data/PANG_Database.db"
 
 def gspan_to_networkx(gspan_str):
     """
@@ -18,37 +17,31 @@ def gspan_to_networkx(gspan_str):
             G.add_edge(int(tokens[1]), int(tokens[2]), label=tokens[3])
     return G
 
-def get_dataset_id(dataset_name):
-    conn = sqlite3.connect(DB_PATH)
+def get_dataset_id(conn,dataset_name):
     cur = conn.cursor()
     cur.execute("SELECT id FROM datasets WHERE name = ?", (dataset_name,))
     result = cur.fetchone()
-    conn.close()
     return result[0] if result else None
 
-def get_graphs_for_dataset(dataset_id):
-    conn = sqlite3.connect(DB_PATH)
+def get_graphs_for_dataset(conn,dataset_id):
     query = """
-    SELECT graph_index, num_nodes, num_edges, label
+    SELECT graph_index, num_nodes, num_edges, label, gspan
     FROM graphs
     WHERE dataset_id = ?
     """
     df = pd.read_sql_query(query, conn, params=(dataset_id,))
-    conn.close()
     return df
 
-def get_filtered_patterns(dataset_id, min_nodes=1, max_nodes=20, limit=100):
+def get_filtered_patterns(conn,dataset_id, min_nodes=1, max_nodes=20, limit=100):
     """
     Récupère les motifs discriminants selon leur taille en nombre de nœuds.
     """
-    conn = sqlite3.connect(DB_PATH)
     query = f"""
     SELECT pattern_id, gspan, freq_total, freq_pos, freq_neg
     FROM patterns
     WHERE dataset_id = ?
     """
     df = pd.read_sql_query(query, conn, params=(dataset_id,))
-    conn.close()
 
     # Compter les nœuds (lignes 'v') directement dans le champ gspan
     df["num_nodes"] = df["gspan"].apply(lambda g: sum(1 for line in g.splitlines() if line.startswith("v ")))
@@ -61,3 +54,25 @@ def get_filtered_patterns(dataset_id, min_nodes=1, max_nodes=20, limit=100):
     df = df.sort_values("score", ascending=False).head(limit)
 
     return df.reset_index(drop=True)
+
+def get_patterns_for_graph(conn,dataset_id,graph_id):
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT pattern_id FROM pattern_occurrences
+        WHERE dataset_id = ? AND graph_id = ?
+    """, (dataset_id, graph_id))
+    present_patterns = set(row[0] for row in cur.fetchall())
+    # On récupère aussi le nombre total de motifs dans le dataset
+    cur.execute("SELECT COUNT(*) FROM patterns WHERE dataset_id = ?", (dataset_id,))
+    total_patterns = cur.fetchone()[0]
+    print(present_patterns,total_patterns)
+    return present_patterns,total_patterns
+
+def get_pattern_dict_for_dataset(conn, dataset_id):
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT pattern_id, gspan FROM patterns
+        WHERE dataset_id = ?
+    """, (dataset_id,))
+    pattern_dict = {pattern_id: gspan for pattern_id, gspan in cur.fetchall()}
+    return pattern_dict

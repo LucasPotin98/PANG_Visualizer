@@ -108,10 +108,10 @@ def get_style_for_dataset(dataset_name):
     else:
         raise NotImplementedError(f"Styles non définis pour le dataset : {dataset_name}")
 
-def draw_graph(G: nx.Graph, dataset_name: str) -> plt.Figure:
+def draw_graph(G: nx.Graph, dataset_name: str,figsize) -> plt.Figure:
     atom_symbols, atom_colors, bond_styles, bond_widths = get_style_for_dataset(dataset_name)
 
-    fig, ax = plt.subplots(figsize=(4, 4))
+    fig, ax = plt.subplots(figsize=figsize)
     pos = nx.kamada_kawai_layout(G)
 
     # Nœuds

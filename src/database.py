@@ -40,6 +40,7 @@ CREATE TABLE patterns (
     dataset_id INTEGER NOT NULL,
     pattern_id INTEGER NOT NULL,
     gspan TEXT NOT NULL,
+    ranking_patterns TEXT,
     freq_total INTEGER NOT NULL,
     freq_pos INTEGER NOT NULL,
     freq_neg INTEGER NOT NULL,
