@@ -124,7 +124,7 @@ def show_graph_analysis_page(conn,dataset_choice):
     
 
 # LOAD LA DATABASE
-conn = sqlite3.connect("../data/PANG_Database.db")
+conn = sqlite3.connect("PANG_Database.db")
 # Sidebar: Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Selection de Page", ["Exploration du dataset", "Analyse par graphe"])
