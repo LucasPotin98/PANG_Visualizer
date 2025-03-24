@@ -95,27 +95,6 @@ if pattern_options:
 else:
     st.warning("Aucun motif à afficher.")
 
-# Step 3: Vectorization (simulated)
-st.subheader("🔢 Vectorisation des graphes")
-st.markdown("Vectorisation simulée. Chaque graphe est représenté par un vecteur de dimension `s`.")
-
-X = np.random.randint(0, 3, size=(100, s))
-y = np.random.randint(0, 2, size=100)
-
-st.dataframe(pd.DataFrame(X[:10], columns=[f"P{i}" for i in range(1, s+1)]).assign(Label=y[:10]))
-
-# Step 4: Classification
-st.subheader("🧠 Entraînement du classifieur")
-classifier_name = st.selectbox("Choisir un classifieur", ["SVM", "Random Forest"])
-
-if classifier_name == "SVM":
-    clf = SVC(kernel='linear')
-else:
-    clf = RandomForestClassifier(n_estimators=100)
-
-scores = cross_val_score(clf, X, y, cv=5, scoring='f1')
-st.success(f"F-score moyen (5-fold CV) : {scores.mean():.2f} ± {scores.std():.2f}")
-
 # Footer
 st.markdown("---")
-st.markdown("Application pédagogique basée sur le framework PANG \[Potin et al., ECML PKDD 2023\]")
+st.markdown("Application basée sur le framework PANG" )
