@@ -6,9 +6,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score
 import numpy as np
+from statsData import get_dataset_id, get_graphs_for_dataset,get_filtered_patterns,gspan_to_networkx
+from draw import draw_graph
 
 # Title
-st.title("🔍 PANG: Pattern-based Anomaly Detection in Graphs")
+st.title("🕸️  PANG Visualizer")
 st.markdown("""
 Cette application illustre le fonctionnement de **PANG** sur des jeux de données de graphes classiques.
 
@@ -16,51 +18,82 @@ Choisissez un dataset, explorez les motifs discriminants extraits, vectorisez le
 """)
 
 # Sidebar: Dataset selection
-dataset_choice = st.sidebar.selectbox("Choisissez un dataset", ["MUTAG", "PTC", "NCI1", "D&D"])
+dataset_choice = st.sidebar.selectbox("Choisissez un dataset", ["MUTAG", "PTC", "AIDS"])
 st.sidebar.markdown("---")
 
 # Dataset description
 dataset_descriptions = {
     "MUTAG": "MUTAG est un dataset de graphes représentant des composés chimiques. Chaque graphe est étiqueté selon la mutagénicité du composé.",
-    "PTC": "PTC est un dataset de graphes représentant des composés chimiques. Chaque graphe est étiqueté selon la toxicité du composé.",
-    "NCI1": "NCI1 est un dataset de graphes représentant des composés chimiques. Chaque graphe est étiqueté selon l'activité biologique du composé.",
-    "D&D": "D&D est un dataset de graphes représentant des structures de protéines. Chaque graphe est étiqueté selon la fonction biologique de la protéine."
+    "PTC": "PTC est un dataset de graphes représentant des composés chimiques. Chaque graphe est étiqueté selon la toxicité du composé.",   
+    "AIDS": "AIDS est un dataset de graphes représentant des composés chimiques. Chaque graphe est étiqueté selon la présence de virus du SIDA"
 }
 
 st.markdown(dataset_descriptions[dataset_choice])
 
-# Placeholder for dataset loading (to be replaced with actual loaders)
-st.subheader(f"🗂 Aperçu du dataset {dataset_choice}")
-st.markdown("*(Chargement simulé — à remplacer par des loaders TUDataset ou autres)*")
 
-# Simulated graph stats
-data_stats = {
-    "MUTAG": {"graphs": 188, "nodes": 18, "edges": 20, "classes": 2},
-    "PTC": {"graphs": 350, "nodes": 26, "edges": 26, "classes": 2},
-    "NCI1": {"graphs": 4110, "nodes": 30, "edges": 32, "classes": 2},
-    "D&D": {"graphs": 1178, "nodes": 285, "edges": 716, "classes": 2},
-}
-st.write(pd.DataFrame([data_stats[dataset_choice]]).T.rename(columns={0: "Valeur"}))
+### Stats générales sur le dataset
 
-# Quelques stats generales
+# === Récupération des données
+dataset_id = get_dataset_id(dataset_choice)
+df_graphs = get_graphs_for_dataset(dataset_id)
 
-# Step 2: Pattern selection and configuration
+# === Statistiques générales
+st.subheader("📊 Statistiques générales")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Nombre de graphes", len(df_graphs))
+col2.metric("Noeuds (moy)", f"{df_graphs['num_nodes'].mean():.1f}")
+col3.metric("Arêtes (moy)", f"{df_graphs['num_edges'].mean():.1f}")
+
+col4, col5 = st.columns(2)
+with col4:
+    st.markdown("#### Distribution du nombre de nœuds")
+    fig, ax = plt.subplots()
+    ax.hist(df_graphs['num_nodes'], bins=20, color="skyblue", edgecolor="black")
+    ax.set_xlabel("Nombre de nœuds")
+    ax.set_ylabel("Nombre de graphes")
+    st.pyplot(fig)
+
+with col5:
+    st.markdown("#### Répartition des classes")
+    st.bar_chart(df_graphs['label'].value_counts().sort_index())
+
+
+    # Step 2: Pattern selection and configuration
 st.subheader("🧩 Extraction de motifs discriminants")
-pattern_type = st.selectbox("Type de motifs", ["Généraux", "Induits", "Fermés"], index=1)
-s = st.slider("Nombre de motifs discriminants (s)", 10, 500, 100)
-
-st.markdown("Exemples simulés de motifs discriminants :")
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
-    G1 = nx.cycle_graph(4)
-    nx.draw(G1, with_labels=True)
-    st.pyplot(plt.gcf())
-    plt.clf()
+    s = st.slider("Nombre de motifs discriminants (s)", 10, 500, 100)
 with col2:
-    G2 = nx.path_graph(5)
-    nx.draw(G2, with_labels=True)
-    st.pyplot(plt.gcf())
-    plt.clf()
+    min_nodes = st.slider("Nœuds minimum par motif", 1, 10, 3)
+with col3:
+    max_nodes = st.slider("Nœuds maximum par motif", 5, 20, 10)
+
+
+df_patterns = get_filtered_patterns(
+    dataset_id=dataset_id,
+    min_nodes=min_nodes,
+    max_nodes=max_nodes,
+    limit=s
+    )
+
+    # Affichage du tableau
+st.markdown("Exemples de motifs discriminants :")
+st.dataframe(df_patterns[["pattern_id", "freq_total", "freq_pos", "freq_neg", "num_nodes"]].head(5))
+
+# Sélection du motif à afficher
+pattern_options = df_patterns["pattern_id"].tolist()
+if pattern_options:
+    selected_index = st.selectbox("🎯 Motif à visualiser :", pattern_options)
+    selected_gspan = df_patterns[df_patterns["pattern_id"] == selected_index]["gspan"].values[0]
+
+    # Conversion gSpan → networkx
+    G = gspan_to_networkx(selected_gspan)
+
+    fig = draw_graph(G, dataset_choice)
+    st.pyplot(fig)
+else:
+    st.warning("Aucun motif à afficher.")
 
 # Step 3: Vectorization (simulated)
 st.subheader("🔢 Vectorisation des graphes")

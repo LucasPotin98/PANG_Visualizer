@@ -3,7 +3,7 @@ import networkx as nx
 import io
 import re
 
-conn = sqlite3.connect("PANG_Database.db")
+conn = sqlite3.connect("../data/PANG_Database.db")
 cur = conn.cursor()
 
 # Suppression des tables si elles existent
@@ -59,7 +59,9 @@ CREATE TABLE pattern_occurrences (
 
 # Insertion des datasets benchmark
 datasets = [
-    ("MUTAG", "Graphes moléculaires avec label de mutagénicité")]
+    ("MUTAG", "Graphes moléculaires avec label de mutagénicité"),
+    ("PTC", "Graphes moléculaires avec label de toxicité"),
+    ('AIDS', 'Graphes moléculaires avec label de présence de virus du SIDA')]
 
 cur.executemany("INSERT OR IGNORE INTO datasets (name, description) VALUES (?, ?)", datasets)
 
@@ -74,7 +76,7 @@ def parse_gspan_string(gspan_str):
             G.add_edge(int(tokens[1]), int(tokens[2]), label=tokens[3])
     return G
 
-def read_gspan_graphs(file_path,labels):
+def read_gspan_graphs(file_path,labels,dataset_id):
     graphs = []
     with open(file_path, 'r') as f:
         content = f.read()
@@ -87,7 +89,7 @@ def read_gspan_graphs(file_path,labels):
         lines = raw.strip().splitlines()
         num_nodes = sum(1 for l in lines if l.startswith("v "))
         num_edges = sum(1 for l in lines if l.startswith("e "))
-        graphs.append((0,gid, num_nodes, num_edges, labels[gid], raw.strip()))
+        graphs.append((dataset_id,gid, num_nodes, num_edges, labels[gid], raw.strip()))
 
     return graphs
 
@@ -104,7 +106,7 @@ def read_labels(file_path):
             labels.append(0 if label <= 0 else 1)
     return labels
 
-def read_patterns(file_path, labels, dataset_id=0):
+def read_patterns(file_path, labels, dataset_id):
     """
     Lit un fichier de motifs gSpan enrichi et renvoie deux éléments :
     1. Liste des motifs : (dataset_id, pattern_index, freq_total, freq_pos, freq_neg, gspan_str)
@@ -151,35 +153,32 @@ def read_patterns(file_path, labels, dataset_id=0):
 
     return patterns, occurrences
 
+c=1
+for ds in ["MUTAG", "PTC", "AIDS"]:
+    file = "../data/"+ds+"_graph.txt"
+    fileLabels = "../data/"+ds+"_label.txt"
+    filePattern = "../data/"+ds+"_pattern.txt"
+    labels = read_labels(fileLabels)
+    graph_data = read_gspan_graphs(file,labels,c)
+    patterns, occurrences = read_patterns(filePattern, labels,c)
+    print(graph_data)
 
-file = "MUTAG_graph.txt"
-fileLabels = "MUTAG_label.txt"
-filePattern = "MUTAG_pattern.txt"
-labels = read_labels(fileLabels)
-graph_data = read_gspan_graphs(file,labels)
-patterns, occurrences = read_patterns(filePattern, labels)
-print(graph_data)
+    # Insertion
+    cur.executemany("""
+    INSERT OR REPLACE INTO graphs (dataset_id,graph_index, num_nodes, num_edges, label, gspan)
+    VALUES (? , ?, ?, ?, ?, ?)
+    """, graph_data)
 
-# Insertion
-cur.executemany("""
-INSERT OR REPLACE INTO graphs (dataset_id,graph_index, num_nodes, num_edges, label, gspan)
-VALUES (? , ?, ?, ?, ?, ?)
-""", graph_data)
+    cur.executemany("""
+    INSERT INTO patterns (dataset_id, pattern_id, freq_total, freq_pos, freq_neg, gspan)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, patterns)
 
-cur.executemany("""
-INSERT INTO patterns (dataset_id, pattern_id, freq_total, freq_pos, freq_neg, gspan)
-VALUES (?, ?, ?, ?, ?, ?)
-""", patterns)
-
-# INSERT INTO pattern_occurrences (...)
-cur.executemany("""
-INSERT INTO pattern_occurrences (dataset_id, pattern_id, graph_id, count)
-VALUES (?, ?, ?, 1)
-""", occurrences)
-
-
-
-
-
-conn.commit()
+    # INSERT INTO pattern_occurrences (...)
+    cur.executemany("""
+    INSERT INTO pattern_occurrences (dataset_id, pattern_id, graph_id, count)
+    VALUES (?, ?, ?, 1)
+    """, occurrences)
+    c+=1
+    conn.commit()
 conn.close()
